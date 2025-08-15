@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Offline Audio Journal</title>
+  <meta name="theme-color" content="#0a84ff" />
+  <!-- Minimal icons as data URIs so this is truly single-file (replace with your own later for better quality) -->
+  <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAHklEQVQoU2NkYGD4z0AEMHGqQAwjGAgGg0EwGgAAAJ5wC2aT3OQWAAAAAElFTkSuQmCC">
+  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAAGklEQVR4nO3BMQEAAADCoPdPbQ43oAAAAAAAAO4CwQAAAZ1A7+UAAAAASUVORK5CYII=">
+  <style>
+    :root{--bg:#0b0c10;--card:#12141a;--ink:#e8eef9;--muted:#94a3b8;--brand:#0a84ff;--accent:#1e293b;--danger:#ef4444;--ok:#10b981}
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";}
+    button,input,select,textarea{font-family:inherit}
+    a{color:var(--brand)}
+    .app{max-width:720px;margin:0 auto;padding:16px 16px 96px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(11,12,16,.6) 70%,rgba(11,12,16,0));backdrop-filter:saturate(140%) blur(16px);padding:12px 4px;z-index:10}
+    .title{font-weight:700;letter-spacing:.2px}
+    .pill{padding:6px 10px;border-radius:999px;background:var(--accent);color:var(--ink);border:1px solid #1f2937}
+    .toolbar{display:flex;gap:8px;align-items:center}
+    .card{background:var(--card);border:1px solid #202532;box-shadow:0 10px 30px rgba(0,0,0,.25);border-radius:18px;padding:14px}
+    .record-wrap{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(11,12,16,0),var(--bg) 18%);padding:12px 16px 24px}
+    .record{display:flex;gap:12px;align-items:center;justify-content:center}
+    .recbtn{appearance:none;-webkit-appearance:none;border:none;background:var(--brand);color:white;width:92px;height:92px;border-radius:999px;box-shadow:0 10px 30px rgba(10,132,255,.35);font-weight:700;font-size:16px}
+    .recbtn.rec{animation:pulse 1.2s infinite}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(10,132,255,.7)}70%{box-shadow:0 0 0 16px rgba(10,132,255,0)}100%{box-shadow:0 0 0 0 rgba(10,132,255,0)}}
+    .timer{font-variant-numeric:tabular-nums;color:var(--muted)}
+    .entry{display:grid;grid-template-columns:1fr;gap:8px}
+    .row{display:flex;gap:8px;align-items:center}
+    .grow{flex:1}
+    .audio{width:100%}
+    .chip{font-size:12px;color:var(--muted)}
+    .list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+    .searchbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+    .searchbar input, .pin input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #223047;background:#0f1320;color:var(--ink)}
+    .muted{color:var(--muted)}
+    .btn{padding:8px 12px;border:1px solid #253045;background:#0f1725;color:var(--ink);border-radius:12px}
+    .btn.primary{background:var(--brand);border-color:transparent;color:#fff}
+    .btn.danger{background:#2a1215;border-color:#3b1519;color:#fecaca}
+    .pin-overlay{position:fixed;inset:0;background:radial-gradient(1200px 600px at 50% -10%,#0f172a,#0b0c10);display:grid;place-items:center;padding:28px;z-index:50}
+    .pin{width:min(520px,100%);}
+    .pin h1{margin:0 0 4px}
+    .grid{display:grid;gap:8px}
+    .pin .row{justify-content:space-between}
+    textarea.transcript{width:100%;min-height:90px;padding:10px 12px;border-radius:12px;border:1px solid #223047;background:#0f1320;color:var(--ink);resize:vertical}
+    .small{font-size:12px}
+    .empty{padding:24px;text-align:center;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div id="pin-gate" class="pin-overlay" hidden>
+    <div class="pin card">
+      <h1>🔒 Audio Journal</h1>
+      <p class="muted" id="pin-mode-help">Set a 4–8 digit PIN to secure your journal.</p>
+      <div class="grid">
+        <input id="pin-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" minlength="4" placeholder="Enter PIN" />
+        <div class="row">
+          <button id="pin-submit" class="btn primary">Continue</button>
+          <button id="pin-reset" class="btn" title="Reset saved PIN">Reset PIN</button>
+        </div>
+        <p class="small muted" id="pin-msg"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="app">
+    <header>
+      <div class="title">🎙️ Offline Audio Journal</div>
+      <div class="toolbar">
+        <button id="export-btn" class="btn">Export ZIP</button>
+        <button id="install-btn" class="btn" hidden>Install</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="record">
+        <button id="record-btn" class="recbtn">Record</button>
+        <div class="timer" id="timer">00:00</div>
+      </div>
+      <div class="searchbar">
+        <input id="q" placeholder="Search transcript…" />
+        <input id="date" type="date" />
+      </div>
+      <div class="row">
+        <button id="clear-filters" class="btn">Clear filters</button>
+      </div>
+    </section>
+
+    <section class="list" id="entries"></section>
+    <div class="empty" id="empty-msg">No entries yet. Tap <b>Record</b> to begin.</div>
+  </div>
