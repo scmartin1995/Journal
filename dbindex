@@ -1,0 +1,32 @@
+const DB = (()=>{
+    const name='audio_journal_db';
+    const version=1;
+    let db;
+    function open(){
+      if(db) return Promise.resolve(db);
+      return new Promise((res,rej)=>{
+        const req=indexedDB.open(name,version);
+        req.onupgradeneeded = e=>{
+          const d=e.target.result;
+          if(!d.objectStoreNames.contains('entries')){
+            const s=d.createObjectStore('entries',{keyPath:'id',autoIncrement:true});
+            s.createIndex('by_time','timestamp');
+          }
+          if(!d.objectStoreNames.contains('settings')){
+            d.createObjectStore('settings');
+          }
+        };
+        req.onsuccess = ()=>{db=req.result;res(db)};
+        req.onerror = ()=>rej(req.error);
+      });
+    }
+    function tx(store,mode='readonly'){return open().then(d=>d.transaction(store,mode).objectStore(store));}
+    return {
+      async getSetting(k){const s=await tx('settings'); return new Promise((res,rej)=>{const r=s.get(k); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);});},
+      async setSetting(k,v){const s=await tx('settings','readwrite'); return new Promise((res,rej)=>{const r=s.put(v,k); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);});},
+      async addEntry(e){const s=await tx('entries','readwrite'); return new Promise((res,rej)=>{const r=s.add(e); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);});},
+      async updateEntry(e){const s=await tx('entries','readwrite'); return new Promise((res,rej)=>{const r=s.put(e); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);});},
+      async delEntry(id){const s=await tx('entries','readwrite'); return new Promise((res,rej)=>{const r=s.delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);});},
+      async listEntries(){const s=await tx('entries'); return new Promise((res,rej)=>{const r=s.index('by_time').getAll(); r.onsuccess=()=>res(r.result.sort((a,b)=>b.timestamp-a.timestamp)); r.onerror=()=>rej(r.error);});},
+    };
+  })();
