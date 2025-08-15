@@ -1,0 +1,19 @@
+ (function addManifest(){
+    const icon192 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABb0P0qAAAAGklEQVR4nO3BMQEAAADCoPdPbQ43oAAAAAAAAO4CwQAAAZ1A7+UAAAAASUVORK5CYII=';
+    const icon512 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAAGklEQVR4nO3BMQEAAADCoPdPbQ43oAAAAAAAAO4CwQAAAZ1A7+UAAAAASUVORK5CYII=';
+    const manifest = {
+      name: 'Offline Audio Journal',
+      short_name: 'Journal',
+      start_url: './index.html',
+      display: 'standalone',
+      background_color: '#0b0c10',
+      theme_color: '#0a84ff',
+      icons: [
+        { src: icon192, sizes: '192x192', type: 'image/png' },
+        { src: icon512, sizes: '512x512', type: 'image/png' }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('link');
+    link.rel = 'manifest'; link.href = url; document.head.appendChild(link);
