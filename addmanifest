@@ -17,3 +17,6 @@
     const url = URL.createObjectURL(blob);
     const link = document.createElement('link');
     link.rel = 'manifest'; link.href = url; document.head.appendChild(link);
+ // clean up on unload
+    window.addEventListener('unload', ()=>URL.revokeObjectURL(url));
+  })();
